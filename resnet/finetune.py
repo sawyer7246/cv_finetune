@@ -4,21 +4,20 @@ import tensorflow as tf
 import datetime
 from resnet.model import ResNetModel
 sys.path.insert(0, '../utils')
-from utils.preprocessor import BatchPreprocessor
 from tensorflow.contrib.data import Iterator
 from utils.datagenerator import ImageDataGenerator
 
 
-tf.app.flags.DEFINE_float('learning_rate', 0.0005, 'Learning rate for adam optimizer')
+tf.app.flags.DEFINE_float('learning_rate', 0.0001, 'Learning rate for adam optimizer')
 tf.app.flags.DEFINE_integer('resnet_depth', 101, 'ResNet architecture to be used: 50, 101 or 152')
 tf.app.flags.DEFINE_integer('num_epochs', 5000, 'Number of epochs for training')
 tf.app.flags.DEFINE_integer('num_classes', 3, 'Number of classes')
 tf.app.flags.DEFINE_integer('batch_size', 50, 'Batch size')
 tf.app.flags.DEFINE_string('train_layers', 'fc', 'Finetuning layers, seperated by commas')
 tf.app.flags.DEFINE_string('multi_scale', '', 'As preprocessing; scale the image randomly between 2 numbers and crop randomly at network\'s input size')
-tf.app.flags.DEFINE_string('training_file', '../data/train.txt', 'Training dataset file')
-tf.app.flags.DEFINE_string('val_file', '../data/val.txt', 'Validation dataset file')
-tf.app.flags.DEFINE_string('tensorboard_root_dir', '../training', 'Root directory to put the training logs and weights')
+tf.app.flags.DEFINE_string('training_file', './data/train.txt', 'Training dataset file')
+tf.app.flags.DEFINE_string('val_file', './data/val.txt', 'Validation dataset file')
+tf.app.flags.DEFINE_string('tensorboard_root_dir', './training', 'Root directory to put the training logs and weights')
 tf.app.flags.DEFINE_integer('log_step', 10, 'Logging period in terms of iteration')
 
 FLAGS = tf.app.flags.FLAGS
@@ -126,10 +125,10 @@ def main(_):
         train_writer.add_graph(sess.graph)
 
         # Load the pretrained weights
-#         model.load_original_weights(sess, skip_layers=train_layers)
+        model.load_original_weights(sess, skip_layers=train_layers)
 
         # Directly restore (your model should be exactly the same with checkpoint)
-        saver.restore(sess, "../training/resnet_20171202_143010/checkpoint/model_epoch8.ckpt")
+        # saver.restore(sess, "../training/resnet_20171202_143010/checkpoint/model_epoch8.ckpt")
 
         print("{} Start training...".format(datetime.datetime.now()))
         print("{} Open Tensorboard at --logdir {}".format(datetime.datetime.now(), tensorboard_dir))

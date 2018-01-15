@@ -1,5 +1,10 @@
+
+
 import datetime
 import os, sys
+
+
+sys.path.insert(0, '../utils')
 
 from numpy import dot
 from tensorflow.contrib.data import Iterator
@@ -10,8 +15,6 @@ import tensorflow as tf
 from utils.datagenerator import ImageDataGenerator
 from utils.preprocessor import BatchPreprocessor
 
-
-sys.path.insert(0, '../utils')
 
 
 tf.app.flags.DEFINE_float('learning_rate', 0.0005, 'Learning rate for adam optimizer')
