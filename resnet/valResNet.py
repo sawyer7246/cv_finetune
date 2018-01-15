@@ -1,0 +1,192 @@
+import datetime
+import os, sys
+
+from numpy import dot
+from tensorflow.contrib.data import Iterator
+
+import numpy as np
+from resnet.model import ResNetModel
+import tensorflow as tf
+from utils.datagenerator import ImageDataGenerator
+from utils.preprocessor import BatchPreprocessor
+
+
+sys.path.insert(0, '../utils')
+
+
+tf.app.flags.DEFINE_float('learning_rate', 0.0005, 'Learning rate for adam optimizer')
+tf.app.flags.DEFINE_integer('resnet_depth', 101, 'ResNet architecture to be used: 50, 101 or 152')
+tf.app.flags.DEFINE_integer('num_epochs', 1, 'Number of epochs for training')
+tf.app.flags.DEFINE_integer('num_classes', 3, 'Number of classes')
+tf.app.flags.DEFINE_integer('batch_size', 1, 'Batch size')
+tf.app.flags.DEFINE_string('train_layers', 'fc', 'Finetuning layers, seperated by commas')
+tf.app.flags.DEFINE_string('multi_scale', '', 'As preprocessing; scale the image randomly between 2 numbers and crop randomly at network\'s input size')
+tf.app.flags.DEFINE_string('training_file', '../data/train.txt', 'Training dataset file')
+tf.app.flags.DEFINE_string('val_file', '../data/val.txt', 'Validation dataset file')
+tf.app.flags.DEFINE_string('tensorboard_root_dir', '../training', 'Root directory to put the training logs and weights')
+tf.app.flags.DEFINE_integer('log_step', 10, 'Logging period in terms of iteration')
+
+FLAGS = tf.app.flags.FLAGS
+
+
+def main(_):
+    # Create training directories
+    now = datetime.datetime.now()
+    train_dir_name = now.strftime('resnet_%Y%m%d_%H%M%S')
+    train_dir = os.path.join(FLAGS.tensorboard_root_dir, train_dir_name)
+    checkpoint_dir = os.path.join(train_dir, 'checkpoint')
+    tensorboard_dir = os.path.join(train_dir, 'tensorboard')
+    tensorboard_train_dir = os.path.join(tensorboard_dir, 'train')
+    tensorboard_val_dir = os.path.join(tensorboard_dir, 'val')
+
+    if not os.path.isdir(FLAGS.tensorboard_root_dir): os.mkdir(FLAGS.tensorboard_root_dir)
+    if not os.path.isdir(train_dir): os.mkdir(train_dir)
+    if not os.path.isdir(checkpoint_dir): os.mkdir(checkpoint_dir)
+    if not os.path.isdir(tensorboard_dir): os.mkdir(tensorboard_dir)
+    if not os.path.isdir(tensorboard_train_dir): os.mkdir(tensorboard_train_dir)
+    if not os.path.isdir(tensorboard_val_dir): os.mkdir(tensorboard_val_dir)
+
+    # Write flags to txt
+    flags_file_path = os.path.join(train_dir, 'flags.txt')
+    flags_file = open(flags_file_path, 'w')
+    flags_file.write('learning_rate={}\n'.format(FLAGS.learning_rate))
+    flags_file.write('resnet_depth={}\n'.format(FLAGS.resnet_depth))
+    flags_file.write('num_epochs={}\n'.format(FLAGS.num_epochs))
+    flags_file.write('batch_size={}\n'.format(FLAGS.batch_size))
+    flags_file.write('train_layers={}\n'.format(FLAGS.train_layers))
+    flags_file.write('multi_scale={}\n'.format(FLAGS.multi_scale))
+    flags_file.write('tensorboard_root_dir={}\n'.format(FLAGS.tensorboard_root_dir))
+    flags_file.write('log_step={}\n'.format(FLAGS.log_step))
+    flags_file.close()
+
+    # Placeholders
+    x = tf.placeholder(tf.float32, [FLAGS.batch_size, 224, 224, 3])
+    y = tf.placeholder(tf.float32, [None, FLAGS.num_classes])
+    is_training = tf.placeholder('bool', [])
+
+    # Model
+    train_layers = FLAGS.train_layers.split(',')
+    model = ResNetModel(is_training, depth=FLAGS.resnet_depth, num_classes=FLAGS.num_classes)
+    loss = model.loss(x, y)
+    train_op = model.optimize(FLAGS.learning_rate, train_layers)
+
+    # Training accuracy of the model
+    correct_pred = tf.equal(tf.argmax(model.prob, 1), tf.argmax(y, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+    # Summaries
+    tf.summary.scalar('train_loss', loss)
+    tf.summary.scalar('train_accuracy', accuracy)
+    merged_summary = tf.summary.merge_all()
+
+#     saver = tf.train.import_meta_graph('../training/resnet_20171127_001208/checkpoint/model_epoch14.ckpt.meta')
+    saver = tf.train.Saver()
+
+    # Batch preprocessors
+    multi_scale = FLAGS.multi_scale.split(',')
+    if len(multi_scale) == 2:
+        multi_scale = [int(multi_scale[0]), int(multi_scale[1])]
+    else:
+        multi_scale = None
+
+#     train_preprocessor = BatchPreprocessor(dataset_file_path=FLAGS.training_file, num_classes=FLAGS.num_classes,
+#                                            output_size=[224, 224], horizontal_flip=True, shuffle=True, multi_scale=multi_scale)
+#     val_preprocessor = BatchPreprocessor(dataset_file_path=FLAGS.val_file, num_classes=FLAGS.num_classes, output_size=[224, 224])
+# 
+#     # Get the number of training/validation steps per epoch
+#     train_batches_per_epoch = np.floor(len(train_preprocessor.labels) / FLAGS.batch_size).astype(np.int16)
+#     val_batches_per_epoch = np.floor(len(val_preprocessor.labels) / FLAGS.batch_size).astype(np.int16)
+
+    # Place data loading and preprocessing on the cpu
+    with tf.device('/cpu:0'):
+        tr_data = ImageDataGenerator(FLAGS.training_file,
+                                     mode='training',
+                                     batch_size=FLAGS.batch_size,
+                                     num_classes=FLAGS.num_classes,img_size =[224, 224],
+                                     shuffle=True)
+        val_data = ImageDataGenerator(FLAGS.val_file,
+                                      mode='inference',
+                                      batch_size=FLAGS.batch_size,
+                                      num_classes=FLAGS.num_classes,img_size =[224, 224],
+                                      shuffle=False)
+    
+        # create an reinitializable iterator given the dataset structure
+        iterator = Iterator.from_structure(tr_data.data.output_types,
+                                           tr_data.data.output_shapes)
+        next_batch = iterator.get_next()
+
+    training_init_op = iterator.make_initializer(tr_data.data)
+    validation_init_op = iterator.make_initializer(val_data.data)
+    
+    # Get the number of training/validation steps per epoch
+    train_batches_per_epoch = int(np.floor(tr_data.data_size/FLAGS.batch_size))
+    val_batches_per_epoch = int(np.floor(val_data.data_size / FLAGS.batch_size))
+
+
+    decision_scheme = np.zeros((3,3),dtype=np.float32)
+    pred_array = []
+    true_array = []
+
+    with tf.Session() as sess:
+#         sess.run(tf.global_variables_initializer())
+#         train_writer.add_graph(sess.graph)
+
+        # Load the pretrained weights
+#         model.load_original_weights(sess, skip_layers=train_layers)
+
+        # Directly restore (your model should be exactly the same with checkpoint)
+        saver.restore(sess, "../training/resnet_20171202_143010/checkpoint/model_epoch8.ckpt")
+
+        print("{} Open Tensorboard at --logdir {}".format(datetime.datetime.now(), tensorboard_dir))
+
+        # Initialize iterator with the training dataset
+#         sess.run(training_init_op)
+
+        # Epoch completed, start validation
+        print("{} Start validation".format(datetime.datetime.now()))
+        sess.run(validation_init_op)
+        test_acc = 0.
+        test_count = 0
+
+        for _ in range(val_batches_per_epoch):
+            batch_tx, batch_ty = sess.run(next_batch)
+#             print("model.prob------->"+str(model.prob))
+            pred = sess.run(tf.nn.softmax(model.prob), feed_dict={x: batch_tx, is_training: False})
+            decision_scheme = decision_scheme + dot(batch_ty.T, pred)
+            acc = sess.run(accuracy, feed_dict={x: batch_tx, y: batch_ty, is_training: False})
+            if acc<1.0:
+                print("------"+str(test_count+1)+"-------")
+                print("acc--->"+str(acc))
+                print("-------pred-------")
+                print(str(pred))
+                print("-------batch_ty-------")
+                print(str(batch_ty))
+            test_acc += acc
+            test_count += 1
+            if(len(pred_array) == 0):
+                pred_array = pred.copy()
+            else:
+                pred_array = np.concatenate((pred_array,pred), axis = 0)
+            if(len(true_array) == 0):
+                true_array = batch_ty.copy()
+            else:
+                true_array = np.concatenate((true_array, batch_ty), axis = 0)
+        
+        test_acc /= test_count
+        print("---------pred_array--------------")
+        print(pred_array)
+        pred_array.tofile("pred_array_res.bin")
+        print(true_array)
+        true_array.tofile("true_array_res.bin")
+        print("-----------------------")
+        print("---------decision_scheme--------------")
+        print(decision_scheme)
+        decision_scheme.tofile("decision_scheme_val_res.bin")
+        print("-----------------------")
+        print("{} Validation Accuracy = {:.4f}".format(datetime.datetime.now(), test_acc))
+
+if __name__ == '__main__':
+#     b = np.fromfile("pred_array.bin",dtype=np.float32)
+#     b.shape = 200,3
+#     print(b)
+    tf.app.run()
