@@ -28,7 +28,7 @@ class ImageDataGenerator(object):
     Requires Tensorflow >= version 1.12rc0
     """
 
-    def __init__(self, txt_file, mode, batch_size, num_classes, img_size=[227, 227], shuffle=True,
+    def __init__(self, txt_file, data_set_file_path,  mode, batch_size, num_classes, img_size=[227, 227], shuffle=True,
                  buffer_size=1000):
         """Create a new ImageDataGenerator.
 
@@ -53,12 +53,16 @@ class ImageDataGenerator(object):
             ValueError: If an invalid mode is passed.
 
         """
+        self.data_set_file_path = data_set_file_path
         self.img_size = img_size
         self.txt_file = txt_file
         self.num_classes = num_classes
 
         # retrieve the data from the text file
-        self._read_txt_file()
+        if "" == data_set_file_path:
+            self._read_txt_file()
+        else:
+            self._read_file_from_path()
 
         # number of samples in the dataset
         self.data_size = len(self.labels)
@@ -103,8 +107,25 @@ class ImageDataGenerator(object):
             lines = f.readlines()
             for line in lines:
                 items = line.split(' ')
+                print('val-'+str(items))
                 self.img_paths.append(items[0])
                 self.labels.append(int(items[1]))
+
+    def _read_file_from_path(self):
+            """Read the content of the text file and store it into lists."""
+            self.img_paths = []
+            self.labels = []
+
+            for class_label in self.data_set_file_path:
+                file_path = class_label['path']
+                files = os.listdir(file_path)
+                label = class_label['label']
+                print('label-'+label)
+                for line in files:
+                    items = file_path + '/' + line
+                    print('items-'+str(items))
+                    self.img_paths.append(items)
+                    self.labels.append(int(label))
 
     def _shuffle_lists(self):
         """Conjoined shuffling of the list of paths and labels."""
@@ -312,5 +333,6 @@ def threadOPS(path, new_path):
 
 
 if __name__ == '__main__':
-    threadOPS("D:/STUDY_SOURCE/image_source/salmon_sushi",
-              "D:/STUDY_SOURCE/image_source/salmon_sushi_aug_1")
+    # threadOPS("D:/STUDY_SOURCE/image_source/salmon_sushi", "D:/STUDY_SOURCE/image_source/salmon_sushi_aug_1")
+    # threadOPS("D:/STUDY_SOURCE/image_source/shell_sushi", "D:/STUDY_SOURCE/image_source/shell_sushi_aug_1")
+    threadOPS("D:/STUDY_SOURCE/image_source/tuna_sushi", "D:/STUDY_SOURCE/image_source/tuna_sushi_aug_1")

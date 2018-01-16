@@ -8,7 +8,7 @@ from tensorflow.contrib.data import Iterator
 from utils.datagenerator import ImageDataGenerator
 
 
-tf.app.flags.DEFINE_float('learning_rate', 0.0001, 'Learning rate for adam optimizer')
+tf.app.flags.DEFINE_float('learning_rate', 0.0005, 'Learning rate for adam optimizer')
 tf.app.flags.DEFINE_integer('resnet_depth', 101, 'ResNet architecture to be used: 50, 101 or 152')
 tf.app.flags.DEFINE_integer('num_epochs', 5000, 'Number of epochs for training')
 tf.app.flags.DEFINE_integer('num_classes', 3, 'Number of classes')
@@ -16,6 +16,11 @@ tf.app.flags.DEFINE_integer('batch_size', 50, 'Batch size')
 tf.app.flags.DEFINE_string('train_layers', 'fc', 'Finetuning layers, seperated by commas')
 tf.app.flags.DEFINE_string('multi_scale', '', 'As preprocessing; scale the image randomly between 2 numbers and crop randomly at network\'s input size')
 tf.app.flags.DEFINE_string('training_file', './data/train.txt', 'Training dataset file')
+
+sushi_path_label_dict_arr = [{'path': 'D:/STUDY_SOURCE/image_source/salmon_sushi_aug_1', 'label': '0'},
+                         {'path': 'D:/STUDY_SOURCE/image_source/tuna_sushi_aug_1', 'label': '1'},
+                         {'path': 'D:/STUDY_SOURCE/image_source/shell_sushi_aug_1', 'label': '2'}]
+
 tf.app.flags.DEFINE_string('val_file', './data/val.txt', 'Validation dataset file')
 tf.app.flags.DEFINE_string('tensorboard_root_dir', './training', 'Root directory to put the training logs and weights')
 tf.app.flags.DEFINE_integer('log_step', 10, 'Logging period in terms of iteration')
@@ -95,12 +100,12 @@ def main(_):
 
     # Place data loading and preprocessing on the cpu
     with tf.device('/cpu:0'):
-        tr_data = ImageDataGenerator(FLAGS.training_file,
+        tr_data = ImageDataGenerator(FLAGS.training_file, sushi_path_label_dict_arr,
                                      mode='training',
                                      batch_size=FLAGS.batch_size,
                                      num_classes=FLAGS.num_classes,img_size =[224, 224],
                                      shuffle=True)
-        val_data = ImageDataGenerator(FLAGS.val_file,
+        val_data = ImageDataGenerator(FLAGS.val_file, "",
                                       mode='inference',
                                       batch_size=FLAGS.batch_size,
                                       num_classes=FLAGS.num_classes,img_size =[224, 224],
@@ -177,10 +182,10 @@ def main(_):
             print("{} Saving checkpoint of model...".format(datetime.datetime.now()))
 
             #save checkpoint of the model
-#             checkpoint_path = os.path.join(checkpoint_dir, 'model_epoch'+str(epoch+1)+'.ckpt')
-#             save_path = saver.save(sess, checkpoint_path)
+            checkpoint_path = os.path.join(checkpoint_dir, 'model_epoch'+str(epoch+1)+'.ckpt')
+            save_path = saver.save(sess, checkpoint_path)
 
-#             print("{} Model checkpoint saved at {}".format(datetime.datetime.now(), checkpoint_path))
+            print("{} Model checkpoint saved at {}".format(datetime.datetime.now(), checkpoint_path))
 
 if __name__ == '__main__':
     tf.app.run()
