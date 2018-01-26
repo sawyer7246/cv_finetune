@@ -30,6 +30,7 @@ FLAGS = tf.app.flags.FLAGS
 
 def main(_):
     # Create training directories
+
     now = datetime.datetime.now()
     train_dir_name = now.strftime('resnet_%Y%m%d_%H%M%S')
     train_dir = os.path.join(FLAGS.tensorboard_root_dir, train_dir_name)
