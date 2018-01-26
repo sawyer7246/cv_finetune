@@ -91,7 +91,7 @@ class ResNetModel(object):
         return tf.group(train_op, batchnorm_updates_op)
 
     def load_original_weights(self, session, skip_layers=[]):
-        weights_path = 'resnet\ResNet-L{}.npy'.format(self.depth)
+        weights_path = '../resnet/ResNet-L{}.npy'.format(self.depth)
         weights_dict = np.load(weights_path, encoding='bytes').item()
 
         for op_name in weights_dict:

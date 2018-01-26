@@ -15,14 +15,14 @@ tf.app.flags.DEFINE_integer('num_classes', 3, 'Number of classes')
 tf.app.flags.DEFINE_integer('batch_size', 50, 'Batch size')
 tf.app.flags.DEFINE_string('train_layers', 'fc', 'Finetuning layers, seperated by commas')
 tf.app.flags.DEFINE_string('multi_scale', '', 'As preprocessing; scale the image randomly between 2 numbers and crop randomly at network\'s input size')
-tf.app.flags.DEFINE_string('training_file', './data/train.txt', 'Training dataset file')
+tf.app.flags.DEFINE_string('training_file', '../data/train.txt', 'Training dataset file')
 
-sushi_path_label_dict_arr = [{'path': 'D:/STUDY_SOURCE/image_source/salmon_sushi_aug_1', 'label': '0'},
-                         {'path': 'D:/STUDY_SOURCE/image_source/tuna_sushi_aug_1', 'label': '1'},
-                         {'path': 'D:/STUDY_SOURCE/image_source/shell_sushi_aug_1', 'label': '2'}]
+sushi_path_label_dict_arr = [{'path': '/media/nick/LENOVO/STUDY_SOURCE/image_source/salmon_sushi_aug_1', 'label': '0'},
+                         {'path': '/media/nick/LENOVO/STUDY_SOURCE/image_source/tuna_sushi_aug_1', 'label': '1'},
+                         {'path': '/media/nick/LENOVO/STUDY_SOURCE/image_source/shell_sushi_aug_1', 'label': '2'}]
 
-tf.app.flags.DEFINE_string('val_file', './data/val.txt', 'Validation dataset file')
-tf.app.flags.DEFINE_string('tensorboard_root_dir', './training', 'Root directory to put the training logs and weights')
+tf.app.flags.DEFINE_string('val_file', '../data/val.txt', 'Validation dataset file')
+tf.app.flags.DEFINE_string('tensorboard_root_dir', '../training', 'Root directory to put the training logs and weights')
 tf.app.flags.DEFINE_integer('log_step', 10, 'Logging period in terms of iteration')
 
 FLAGS = tf.app.flags.FLAGS
@@ -30,7 +30,6 @@ FLAGS = tf.app.flags.FLAGS
 
 def main(_):
     # Create training directories
-
     now = datetime.datetime.now()
     train_dir_name = now.strftime('resnet_%Y%m%d_%H%M%S')
     train_dir = os.path.join(FLAGS.tensorboard_root_dir, train_dir_name)
